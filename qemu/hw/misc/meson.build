@@ -299,7 +299,7 @@ system_ss.add(when: 'CONFIG_XLNX_VERSAL', if_true: files(
   'xlnx-versal2-asu-global.c',
   'xlnx-versal2-asu-global-pmc.c',
   'xlnx-versal2-asu-local.c',
-  'xlnx-versal2-asu-ecdsa-rsa.c',
+  #'xlnx-versal2-asu-ecdsa-rsa.c',
   'xlnx-versal-asu-trng.c'
 ))
 
@@ -343,3 +343,6 @@ system_ss.add(when: 'CONFIG_SBSA_REF', if_true: files('sbsa_ec.c'))
 
 # HPPA devices
 system_ss.add(when: 'CONFIG_LASI', if_true: files('lasi.c'))
+#system_ss.add(files('xlnx-versal-rsa-stub.c'))
+system_ss.add(files('zynqmp_dummy_periph.c'))
+system_ss.add(files('zynqmp_pll_stub.c'))

@@ -620,6 +620,8 @@ static void arm_generic_fdt_init(MachineState *machine)
         arm_load_kernel(ARM_CPU(first_cpu), machine, &arm_generic_fdt_binfo);
     }
 
+
+
     return;
 }
 
@@ -672,6 +674,7 @@ static void arm_generic_fdt_7000_init(MachineState *machine)
     qdev_prop_set_uint32(dev, "num-cpu", fdt_generic_num_cpus);
     sysbus_realize(busdev, &error_fatal);
     sysbus_mmio_map(busdev, 0, ZYNQ7000_MPCORE_PERIPHBASE);
+
 }
 
 static bool get_ignore_memory_transaction_failures(Object *obj, Error **errp)

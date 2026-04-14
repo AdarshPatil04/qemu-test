@@ -36,88 +36,35 @@
 #include "exec/memory.h"
 #include "exec/address-spaces.h"
 #include "sysemu/sysemu.h"
+#include "hw/misc/zynqmp_log_manager.h"
 #include "qemu/log.h"
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <stdarg.h>
 
 /* ================================================================== */
 /* File-based logging                                                  */
 /* ================================================================== */
 
-#define PLL_LOG_PATH_DEFAULT \
+#define PLL_LOG_PATH \
     "/home/adarshpatil04/workspace/qemu-run/qemu_backend_debug.log"
 
-static FILE *pll_log_fp;
-static bool pll_log_hooks_installed;
-static const char *pll_log_path;
-
-static const char *pll_get_log_path(void)
-{
-    const char *path = getenv("QEMU_PLL_LOG_FILE");
-
-    if (!path || !path[0]) {
-        path = getenv("QEMU_LOG_FILE");
-    }
-    if (!path || !path[0]) {
-        path = PLL_LOG_PATH_DEFAULT;
-    }
-    return path;
-}
-
-static void pll_log_atexit(void)
-{
-    if (pll_log_fp) {
-        fprintf(pll_log_fp, "[PLL-BYPASS] Graceful shutdown (normal exit)\n");
-        fflush(pll_log_fp);
-        fclose(pll_log_fp);
-        pll_log_fp = NULL;
-    }
-}
-
-static void pll_log_close(int signum)
-{
-    if (pll_log_fp) {
-        fprintf(pll_log_fp,
-                "[PLL-BYPASS] Graceful shutdown (signal %d)\n", signum);
-        fflush(pll_log_fp);
-        fclose(pll_log_fp);
-        pll_log_fp = NULL;
-    }
-    signal(signum, SIG_DFL);
-    raise(signum);
-}
+static bool pll_log_path_configured;
 
 static void pll_log(const char *fmt, ...)
     __attribute__((format(printf, 1, 2)));
 static void pll_log(const char *fmt, ...)
 {
-    if (!pll_log_fp) {
-        pll_log_path = pll_get_log_path();
-        pll_log_fp = fopen(pll_log_path, "a");
-        if (!pll_log_fp) {
-            return;
-        }
-        setvbuf(pll_log_fp, NULL, _IOLBF, 0);
-        if (!pll_log_hooks_installed) {
-            signal(SIGINT,  pll_log_close);
-            signal(SIGTERM, pll_log_close);
-            signal(SIGQUIT, pll_log_close);
-            signal(SIGHUP,  pll_log_close);
-            atexit(pll_log_atexit);
-            pll_log_hooks_installed = true;
-        }
-        fprintf(pll_log_fp,
-                "[PLL-BYPASS] Logging started (pid=%ld, file=%s)\n",
-                (long)getpid(), pll_log_path);
-        fflush(pll_log_fp);
-    }
     va_list ap;
+
+    if (!pll_log_path_configured) {
+        zynqmp_log_manager_set_channel_path(ZYNQMP_LOG_CHANNEL_PLL,
+                                            "QEMU_PLL_LOG_FILE",
+                                            PLL_LOG_PATH);
+        pll_log_path_configured = true;
+    }
+
     va_start(ap, fmt);
-    vfprintf(pll_log_fp, fmt, ap);
+    zynqmp_log_vprintf(ZYNQMP_LOG_CHANNEL_PLL, fmt, ap);
     va_end(ap);
-    fflush(pll_log_fp);
 }
 
 /* ================================================================== */

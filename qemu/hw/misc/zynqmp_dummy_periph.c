@@ -12,85 +12,32 @@
 #include "qemu/osdep.h"
 #include "hw/sysbus.h"
 #include "hw/fdt_generic_util.h"
+#include "hw/misc/zynqmp_log_manager.h"
 #include "qemu/log.h"
 #include "exec/address-spaces.h"
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <stdarg.h>
 
 #define TYPE_ZYNQMP_DUMMY "zynqmp.dummy-periph"
 #define NUM_REGS 4
-#define LOG_FILE_DEFAULT "/home/adarshpatil04/workspace/qemu-run/hooks.log"
+#define LOG_FILE "/home/adarshpatil04/workspace/qemu-run/hooks.log"
 
-static FILE *log_fp = NULL;
-static bool log_hooks_installed;
-static const char *dummy_log_path;
-
-static const char *dummy_get_log_path(void)
-{
-    const char *path = getenv("QEMU_DUMMY_LOG_FILE");
-
-    if (!path || !path[0]) {
-        path = getenv("QEMU_LOG_FILE");
-    }
-    if (!path || !path[0]) {
-        path = LOG_FILE_DEFAULT;
-    }
-    return path;
-}
-
-static void dummy_log_atexit(void)
-{
-    if (log_fp) {
-        fprintf(log_fp, "[PERSONALIZED QEMU] Graceful shutdown (normal exit)\n");
-        fflush(log_fp);
-        fclose(log_fp);
-        log_fp = NULL;
-    }
-}
-
-static void dummy_close_log(int signum)
-{
-    if (log_fp) {
-        fprintf(log_fp, "[PERSONALIZED QEMU] Graceful shutdown (signal %d)\n",
-                signum);
-        fflush(log_fp);
-        fclose(log_fp);
-        log_fp = NULL;
-    }
-    signal(signum, SIG_DFL);
-    raise(signum);
-}
+static bool dummy_log_path_configured;
 
 static void dummy_log(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 static void dummy_log(const char *fmt, ...)
 {
-    if (!log_fp) {
-        dummy_log_path = dummy_get_log_path();
-        log_fp = fopen(dummy_log_path, "a");
-        if (!log_fp) {
-            return;
-        }
-        setvbuf(log_fp, NULL, _IOLBF, 0);
-        if (!log_hooks_installed) {
-            signal(SIGINT,  dummy_close_log);
-            signal(SIGTERM, dummy_close_log);
-            signal(SIGQUIT, dummy_close_log);
-            signal(SIGHUP,  dummy_close_log);
-            atexit(dummy_log_atexit);
-            log_hooks_installed = true;
-        }
-        fprintf(log_fp,
-                "[PERSONALIZED QEMU] Logging started (pid=%ld, file=%s)\n",
-                (long)getpid(), dummy_log_path);
-        fflush(log_fp);
-    }
     va_list args;
+
+    if (!dummy_log_path_configured) {
+        zynqmp_log_manager_set_channel_path(ZYNQMP_LOG_CHANNEL_DUMMY,
+                                            "QEMU_DUMMY_LOG_FILE",
+                                            LOG_FILE);
+        dummy_log_path_configured = true;
+    }
+
     va_start(args, fmt);
-    vfprintf(log_fp, fmt, args);
+    zynqmp_log_vprintf(ZYNQMP_LOG_CHANNEL_DUMMY, fmt, args);
     va_end(args);
-    fflush(log_fp);
 }
 
 typedef struct ZynqMPDummyState {

@@ -1,5 +1,0 @@
-config MDIO
-    bool
-
-config ETHPHY
-    bool
